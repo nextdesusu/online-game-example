@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { initConnection, establishedConnection } from "../connection";
 
 @Component({
   selector: 'app-root',
@@ -6,23 +7,13 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  socket: WebSocket;
   ngOnInit(): void {
-    const socket = new WebSocket("wss://127.0.0.1:3001");
-    socket.onopen = () => {
-      console.log("onopen")
-      socket.send("player joined!");
-    }
-    socket.onmessage = () => {
-      console.log("onmessage")
-    }
-    socket.onerror = () => {
-      console.log("onerror")
-    }
-    socket.onclose = () => {
-      console.log("onclose")
-    }
-
-    this.socket = socket;
+    const connection: establishedConnection = initConnection(`User: ${Math.random().toString()}`);
+    connection.socket.on("connect", () => {
+      connection.socket.emit("game-roomsRequest");
+    });
+    connection.socket.on("game-roomsRequestFullfilled", (data) => {
+      console.log("rooms:", data.rooms);
+    });
   }
 }
