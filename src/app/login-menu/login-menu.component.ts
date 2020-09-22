@@ -6,10 +6,14 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./login-menu.component.css']
 })
 export class LoginMenuComponent implements OnInit {
-
-  constructor() { }
+  mlabel = "login";
+  constructor() {}
 
   ngOnInit(): void {
+  }
+
+  getInput(event: any) {
+    console.log("get input:", event);
   }
 
 }

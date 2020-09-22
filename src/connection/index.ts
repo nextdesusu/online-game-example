@@ -19,43 +19,42 @@ interface establishedConnection {
   socket: Socket;
 }
 
-const initConnection = (userName): establishedConnection => {
-  const socket = io.connect("http://localhost:3000");
-  const user: User = {
-    nickname: userName,
-    id: genId()
+export class Connection {
+  private socket: Socket;
+  private user: User;
+  private connection: RTCPeerConnection;
+  private channel: any | null;
+  constructor(userName: string, roomsCb: any) {
+    this.socket = io.connect(`${window.location.hostname}:3000`);
+    this.socket.on("connect", () => {
+      this.socket.emit("game-roomsRequest");
+    });
+    this.socket.on("game-roomsRequestFullfilled", (data) => {
+      console.log("rooms:", data.rooms);
+      roomsCb(data.rooms);
+    });
+
+    this.user =  {
+      nickname: userName,
+      id: genId()
+    };
+
+    this.channel = null;
   }
-  return {
-    user,
-    socket
+
+  async host() {
+    const localConnection = new RTCPeerConnection();
+
+    //const sendChannel = localConnection.createDataChannel(`channel: ${roomName}`);
+    const offer = await localConnection.createOffer();
+    this.socket.emit("webrtc", offer);
+
+    this.connection = localConnection;
+  }
+
+  createRoom(roomName: string) {
+    //this.socket.emit();
   }
 }
 
-const onDataChannel = (a: any) => {
-  console.log(`a: ${a}`);
-}
-
-const host = async (args: connArgs) => {
-  const localConnection = new RTCPeerConnection();
-  const sendChannel = localConnection.createDataChannel(`channel: ${args.roomId}`);
-/*
-  const socket = spawnSocket();
-  const offer = await localConnection.createOffer();
-
-  socket.emit("webrtc", offer);
-  //socket.on("webrtc", )
-  */
-}
-
-const join = async (args: connArgs) => {
-  const remoteConnection = new RTCPeerConnection();
-  remoteConnection.ondatachannel = onDataChannel;
-/*
-  const socket = spawnSocket();
-  socket.on("webrtc", (data) => {
-    console.log("d:", data);
-  })
-  */
-}
-
-export { initConnection, host, join, establishedConnection, User, connArgs };
+export { establishedConnection, User, connArgs };
