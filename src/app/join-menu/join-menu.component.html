@@ -1,3 +1,4 @@
-<ul>
-  <li *ngFor="let room of props.rooms"><app-button>{{room.name}}</app-button></li>
+<h2>choose room</h2>
+<ul (click)="onClick($event)">
+  <li data-room-id="room.id" *ngFor="let room of rooms">{{ room.name }}</li>
 </ul>

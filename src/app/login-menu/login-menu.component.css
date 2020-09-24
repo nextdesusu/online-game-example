@@ -1,0 +1,23 @@
+:host {
+  margin: auto auto;
+  display: grid;
+  grid-template-rows: 1fr .5fr;
+  width: 50vw;
+  grid-gap: 1em;
+}
+
+:host > button {
+  border: 1px solid rgb(82, 82, 82);
+  border-radius: .3em;
+  padding: .5em;
+  background-color: white;
+  text-transform: uppercase;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+:host > button:disabled {
+  background-color: rgba(255, 0, 0, 0.651);
+  color: white;
+  cursor: default;
+}

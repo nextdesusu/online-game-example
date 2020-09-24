@@ -1,4 +1,4 @@
-<app-input
-  (inputEvent)="getInput($event)"
-  [props]="{ label: mlabel }"
-></app-input>
+<app-input (onInput)="getInput($event)" [props]="{pattern: '\\w{4,9}'}"
+  >login</app-input
+>
+<button [disabled]="errored" (click)="submit()">submit</button>

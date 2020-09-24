@@ -1,1 +1,7 @@
-<app-login-menu></app-login-menu>
+<div *ngIf="login === null">
+  <app-login-menu (loginEvent)="loginEvent($event)"></app-login-menu>
+</div>
+<div *ngIf="login !== null">
+  <app-host-menu (roomHostedEvent)="roomHostedEvent($event)" [gameOptions]="gameOptions"></app-host-menu>
+  <app-join-menu (roomJoinEvent)="roomSelectedEvent($event)"></app-join-menu>
+</div>

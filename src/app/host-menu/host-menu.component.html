@@ -1,1 +1,7 @@
-<p>host-menu works!</p>
+<h2>host game</h2>
+<app-input (onInput)="getInput($event)" [props]="{pattern: '\\w{5,10}'}">game name</app-input>
+<select>
+  <option *ngFor="let opt of gameOptions" value="opt.type">
+    {{ opt.name }}
+  </option>
+</select>

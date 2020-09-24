@@ -1,4 +1,4 @@
 <label
-  ><input (input)="getInput($event)" />
-  {{ props.label }}
+  ><ng-content></ng-content>
+  <input (input)="getInput($event)" [ngClass]="{ errored: errored }" />
 </label>
