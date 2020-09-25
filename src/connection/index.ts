@@ -1,8 +1,6 @@
 import io, { Socket as SocketValue } from 'socket.io-client';
+import { hostEvent } from "../app/types";
 type Socket = typeof SocketValue;
-
-const genP = (): String => Math.random().toString().slice(4);
-const genId = (): string => `${genP()}-${genP()}-${genP()}-${genP()}`;
 
 interface User {
   nickname: string;
@@ -19,27 +17,50 @@ interface establishedConnection {
   socket: Socket;
 }
 
-export class Connection {
+export default class Connection {
   private socket: Socket;
   private user: User;
   private connection: RTCPeerConnection;
   private channel: any | null;
-  constructor(userName: string, roomsCb: any) {
+  //private roomsUpdateCb: (rooms: Array<any>) => void;
+  private _rooms: Array<any>;
+  constructor(userName: string) {
+    this._rooms = [];
     this.socket = io.connect(`${window.location.hostname}:3000`);
-    this.socket.on("connect", () => {
-      this.socket.emit("game-roomsRequest");
+    this.socket.on("connect", (data) => {
+      this.socket.emit("game-userIdFetched");
     });
+    this.socket.on("game-userIdFullfilled", (data) => {
+      this.user = {
+        nickname: userName,
+        id: data.id
+      };
+      console.log("user:", this.user);
+      this.fetchRooms();
+    })
     this.socket.on("game-roomsRequestFullfilled", (data) => {
-      console.log("rooms:", data.rooms);
-      roomsCb(data.rooms);
+      //this.roomsUpdateCb(data.rooms);
+      console.log("new rooms", data.rooms);
+      this._rooms = data.rooms;
     });
-
-    this.user =  {
-      nickname: userName,
-      id: genId()
-    };
 
     this.channel = null;
+  }
+
+  private fetchRooms(): void {
+    this.socket.emit("game-roomsRequest");
+  }
+
+  get rooms() {
+    return this._rooms;
+  }
+
+  createRoom(event: hostEvent, onCreationCb: (roomId: string) => void) {
+    this.socket.emit("game-roomHostQuery", { roomName: event.name, gameType: event.type, host: this.user });
+    this.socket.on("game-roomHostResponse", (data) => {
+      onCreationCb(data.roomId);
+    });
+    this.fetchRooms();
   }
 
   async host() {
@@ -50,10 +71,6 @@ export class Connection {
     this.socket.emit("webrtc", offer);
 
     this.connection = localConnection;
-  }
-
-  createRoom(roomName: string) {
-    //this.socket.emit();
   }
 }
 

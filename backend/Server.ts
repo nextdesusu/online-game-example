@@ -15,6 +15,7 @@ interface Room {
   client: User | null;
   name: string;
   id: string;
+  type: number;
 }
 
 export default class Server {
@@ -52,22 +53,31 @@ export default class Server {
 
   private handleSocketConnection(): void {
     this.socketIO.on("connect", (socketClient: SocketIO.Socket) => {
+      socketClient.on("game-userIdFetched", () => {
+        this.socketIO.to(socketClient.id).emit("game-userIdFullfilled", { id: genId() });
+      })
       socketClient.on("game-roomsRequest", () => {
         this.socketIO.to(socketClient.id).emit("game-roomsRequestFullfilled", { rooms: this.rooms });
       });
-      socketClient.on("game-host", (data) => {
-        console.log("game-host", data);
+      socketClient.on("game-roomHostQuery", (data) => {
         const {
-          name,
+          roomName,
+          gameType,
           host
         } = data;
+        const id = genId();
         const room: Room = {
-          name,
+          name: roomName,
+          id,
+          client: null,
           host,
-          id: genId(),
-          client: null
+          type: gameType,
         }
         this.addRoom(room);
+        this.socketIO.to(socketClient.id).emit("game-roomHostResponse", { roomId: id });
+      });
+      socketClient.on("game-host", (data) => {
+        console.log("game-host", data);
       });
       socketClient.on("game-join", (data) => {
         console.log("game-join", data);

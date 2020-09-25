@@ -1,4 +1,4 @@
 <h2>choose room</h2>
 <ul (click)="onClick($event)">
-  <li data-room-id="room.id" *ngFor="let room of rooms">{{ room.name }}</li>
+  <li *ngFor="let room of rooms" data-room-id="room.id">{{ room.name }}</li>
 </ul>

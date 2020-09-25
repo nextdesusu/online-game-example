@@ -4,7 +4,7 @@ export enum gameType {
 
 export interface hostEvent {
   type: gameType;
-  id: string;
+  name: string;
 }
 
 export interface loginEvent {

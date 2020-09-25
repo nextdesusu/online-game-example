@@ -1,7 +1,14 @@
 <h2>host game</h2>
-<app-input (onInput)="getInput($event)" [props]="{pattern: '\\w{5,10}'}">game name</app-input>
-<select>
-  <option *ngFor="let opt of gameOptions" value="opt.type">
-    {{ opt.name }}
-  </option>
-</select>
+<app-input (onInput)="getInput($event)" [props]="{ pattern: '\\w{5,10}' }"
+  >game name</app-input
+>
+<div class="grid-2-cols">
+  <select class="std-select" onchange="getName($event)">
+    <option *ngFor="let opt of gameOptions" value="opt.type">
+      {{ opt.name }}
+    </option>
+  </select>
+  <button [disabled]="errored" class="std-button" (click)="onClick()">
+    host
+  </button>
+</div>

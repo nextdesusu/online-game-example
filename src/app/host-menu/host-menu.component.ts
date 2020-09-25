@@ -8,14 +8,29 @@ import { gameType, hostEvent, gameOption, onInputEvent } from "../types";
 })
 export class HostMenuComponent {
   private input: string = "";
-  private id: gameType = gameType.ticTacToe;
+  private gameId: gameType = gameType.ticTacToe;
   @Input() gameOptions: Array<gameOption>;
   @Output() roomHostedEvent: EventEmitter<hostEvent> = new EventEmitter<hostEvent>();
+  errored: boolean = true;
   constructor() { }
   getInput(event: onInputEvent) {
     if (event.passedCheck) {
       this.input = event.value;
+      this.errored = false;
+    } else {
+      this.errored = true;
     }
+  }
+
+  getName(event: any) {
+    console.log(event);
+  }
+
+  onClick() {
+    this.roomHostedEvent.emit({
+      name: this.input,
+      type: this.gameId
+    });
   }
 
 }

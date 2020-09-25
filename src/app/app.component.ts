@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { gameType, gameOption } from "./types";
-//import { initConnection, establishedConnection } from "../connection";
+import { gameType, gameOption, hostEvent } from "./types";
+import Connection from "../connection";
 
 @Component({
   selector: 'app-root',
@@ -8,7 +8,8 @@ import { gameType, gameOption } from "./types";
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  private roomId: string | null = null;
+  private connection: Connection | null = null;
+  roomId: string | null = null;
   login: string | null = null;
 
   gameOptions: Array<gameOption> = [
@@ -20,11 +21,18 @@ export class AppComponent implements OnInit {
 
   loginEvent(event: any) {
     this.login = event.login;
-    console.log("login:", this.login);
+    const conn = new Connection(event.login);
+    this.connection = conn;
   }
 
   roomSelectedEvent(event: string) {
     this.roomId = event;
     console.log("roomId:", this.roomId);
+  }
+
+  roomHostedEvent(event: hostEvent) {
+    this.connection.createRoom(event, (roomId) => {
+      console.log("id:", roomId);
+    })
   }
 }
