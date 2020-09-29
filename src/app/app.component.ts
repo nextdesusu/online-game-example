@@ -27,12 +27,14 @@ export class AppComponent implements OnInit {
 
   roomSelectedEvent(event: string) {
     this.roomId = event;
-    console.log("roomId:", this.roomId);
+    this.connection.join(event);
+    //console.log("roomId:", this.roomId);
   }
 
   roomHostedEvent(event: hostEvent) {
     this.connection.createRoom(event, (roomId) => {
-      console.log("id:", roomId);
-    })
+      this.roomId = roomId;
+      this.connection.host(roomId);
+    });
   }
 }

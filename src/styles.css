@@ -1,4 +1,9 @@
 /* You can add global styles to this file, and also import other style files */
+ul, li {
+  padding: 0;
+  margin: 0;
+}
+
 .std-button, .std-select {
   border: 1px solid rgb(82, 82, 82);
   border-radius: .3em;

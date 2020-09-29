@@ -38,9 +38,14 @@ export default class Server {
     this.rooms.push(room);
   }
 
+  private getRoomById(roomId: string): Room | null {
+    const room: Room | undefined = this.rooms.find((room: Room) => room.id === roomId);
+    return room === undefined ? null : room;
+  }
+
   private addClientToRoom(roomId: string, client: User): void {
-    const room = this.rooms.find((room: Room) => room.id === roomId);
-    if (room === undefined) {
+    const room = this.getRoomById(roomId);
+    if (room === null) {
       console.log(`Room with id: ${roomId} does not exist!`);
       return;
     }
@@ -54,10 +59,23 @@ export default class Server {
   private handleSocketConnection(): void {
     this.socketIO.on("connect", (socketClient: SocketIO.Socket) => {
       socketClient.on("game-userIdFetched", () => {
-        this.socketIO.to(socketClient.id).emit("game-userIdFullfilled", { id: genId() });
-      })
+        this.socketIO.to(socketClient.id).emit("game-userIdFullfilled",
+          {
+            id: genId(),
+            socketId: socketClient.id
+          }
+        );
+      });
       socketClient.on("game-roomsRequest", () => {
         this.socketIO.to(socketClient.id).emit("game-roomsRequestFullfilled", { rooms: this.rooms });
+      });
+      socketClient.on("game-roomJoinQuery", (data) => {
+        const { roomId, user } = data;
+        this.addClientToRoom(roomId, user);
+        socketClient.join(roomId);
+        this.socketIO.to(socketClient.id).emit("game-roomJoinResponse", { succes: true });
+        socketClient.broadcast.to(roomId).emit("game-clientJoin");
+        console.log("client join room:", roomId);
       });
       socketClient.on("game-roomHostQuery", (data) => {
         const {
@@ -72,21 +90,18 @@ export default class Server {
           client: null,
           host,
           type: gameType,
-        }
+        };
         this.addRoom(room);
+        socketClient.join(id);
+        console.log("host join room:", id);
         this.socketIO.to(socketClient.id).emit("game-roomHostResponse", { roomId: id });
       });
-      socketClient.on("game-host", (data) => {
-        console.log("game-host", data);
+      socketClient.on("webrtc", (data) => {
+        socketClient.broadcast.to(data.roomId).emit("webrtc", data);
       });
-      socketClient.on("game-join", (data) => {
-        console.log("game-join", data);
-        const {
-          roomId,
-          client
-        } = data;
-        this.addClientToRoom(roomId, client);
-      });
+      socketClient.on("ICE-candidate", (data) => {
+        socketClient.broadcast.to(data.roomId).emit("ICE-candidate", data.candidate);
+      })
       /*
       socket.on("channel", (data): void => {
         socket.join(data.channel);
