@@ -4,6 +4,11 @@ ul, li {
   margin: 0;
 }
 
+app-root {
+  display: block;
+  height: 100%;
+}
+
 .std-button, .std-select {
   border: 1px solid rgb(82, 82, 82);
   border-radius: .3em;

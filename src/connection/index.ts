@@ -1,7 +1,6 @@
 import io, { Socket as SocketValue } from 'socket.io-client';
 import { hostEvent } from "../app/types";
 
-const CONFIG = { iceServers: [{ urls: "stun:stun.1.google.com:19302" }] };
 type Socket = typeof SocketValue;
 
 export interface User {
@@ -9,18 +8,32 @@ export interface User {
   id: string;
 }
 
+interface messageToSend {
+  text: string;
+  date: Date;
+  author: User;
+}
+
 export default class Connection {
   private socket: Socket;
-  private user: User;
-  private p2p: RTCPeerConnection;
-  private channel: RTCDataChannel;
-  private candidates: Array<any>;
-  //private roomsUpdateCb: (rooms: Array<any>) => void;
+  private user: User | null;
+  private channel: RTCDataChannel | null;
+  private p2p: RTCPeerConnection | null;
   private _rooms: Array<any>;
   constructor(userName: string) {
     this._rooms = [];
+    this.user = null;
+    this.channel = null;
+    this.p2p = null;
     this.socket = io.connect(`${window.location.hostname}:3000`);
-    this.socket.on("connect", (data) => {
+    this.initSocket(userName);
+
+    this.createP2P();
+    this.createDataChannel();
+  }
+
+  private initSocket(userName: string): void {
+    this.socket.on("connect", () => {
       this.socket.emit("game-userIdFetched");
     });
     this.socket.on("game-userIdFullfilled", (data) => {
@@ -28,37 +41,63 @@ export default class Connection {
         nickname: userName,
         id: data.id
       };
-      console.log("user:", this.user);
       this.fetchRooms();
     })
-    this.socket.on("game-roomsRequestFullfilled", (data) => {
-      console.log("new rooms", data.rooms);
+    const applyRooms = (data) => {
       this._rooms = data.rooms;
-    });
+    }
+    this.socket.on("game-roomsRequestFullfilled", applyRooms);
+    this.socket.on("game-roomsUpdate", applyRooms);
+  }
+
+  private createP2P(): void {
     this.p2p = new RTCPeerConnection();
-    this.channel = this.p2p.createDataChannel("game", { negotiated: true, id: 0 });
-    this.channel.onopen = () => {
-      this.channel.send("kekekeek1!!111");
-      console.log("channel opened");
-    };
-    this.channel.onmessage = (e) => console.log(`messsage: > ${e.data}`);
     this.p2p.onconnectionstatechange = () => {
       console.log("connection state:", this.p2p.connectionState);
     }
-    this.candidates = [];
-    this.socket.on("ICE-candidate", (cnd) => {
-      console.log("adding cnd:", cnd);
-      this.candidates.push(cnd);
-      //this.p2p.addIceCandidate(cnd);
-    });
+  }
+
+  private createDataChannel(): void {
+    if (this.p2p === null) {
+      throw `P2P is null!`;
+    }
+    this.channel = this.p2p.createDataChannel("game", { negotiated: true, id: 0 });
+    this.channel.onmessage = (e) => console.log(`messsage: > ${e.data}`);
+    //this.channel.onopen = () => {console.log("channel opened");};
   }
 
   private fetchRooms(): void {
     this.socket.emit("game-roomsRequest");
   }
 
+  private setCndExhanger(roomId: string) {
+    const candidates = [];
+    this.p2p.onicecandidate = ({ candidate }) => {
+      if (candidate !== null) {
+        candidates.push(candidate);
+      } else {
+        this.socket.emit("ICE-exhangeCandidates", { candidates, roomId });
+      }
+    }
+    this.socket.on("ICE-exhangeCandidates", (exchangedCandidates) => {
+      for (const candidate of exchangedCandidates) {
+        this.p2p.addIceCandidate(candidate);
+      }
+    });
+  }
+
   get rooms() {
     return this._rooms;
+  }
+
+  sendMessage(msgData: { text: string, date: Date }) {
+    const msg: messageToSend = {
+      ...msgData,
+      author: this.user,
+    };
+    const stringified = JSON.stringify(msg);
+    console.log("sending:", stringified);
+    this.channel.send(`m:${stringified}`);
   }
 
   createRoom(event: hostEvent, onCreationCb: (roomId: string) => void) {
@@ -69,64 +108,32 @@ export default class Connection {
     this.fetchRooms();
   }
 
-  private addAllGatheredCandidates(): void {
-    for (const candidate of this.candidates) {
-      this.p2p.addIceCandidate(candidate);
-    }
-    this.candidates = [];
-  }
-
   async join(roomId: string) {
-    this.p2p.onicecandidate = ({ candidate }) => {
-      console.log("cnd:", candidate)
-      if (candidate !== null) {
-        this.socket.emit("ICE-candidate", { candidate, roomId });
-      } else {
-        this.addAllGatheredCandidates();
-      }
-    }
+    this.setCndExhanger(roomId);
     this.socket.emit("game-roomJoinQuery", { roomId, user: this.user });
-    this.socket.on("webrtc", async ({ webRtcData }) => {
-      if (webRtcData.type === "offer") {
-        await this.p2p.setRemoteDescription(webRtcData);
-        const answer = await this.p2p.createAnswer();
-        await this.p2p.setLocalDescription(answer);
-        console.log("join sending answer:", answer);
-        this.socket.emit("webrtc", {
-          webRtcData: answer,
-          roomId
-        });
-      } else {
-        //this.p2p.setLocalDescription(webRtcData);
-        throw `Shouldnt get answer!`;
-      }
-    })
+    this.socket.on("webrtc-offer", async ({ webRtcData }) => {
+      await this.p2p.setRemoteDescription(webRtcData);
+      const answer = await this.p2p.createAnswer();
+      await this.p2p.setLocalDescription(answer);
+      this.socket.emit("webrtc-answer", {
+        webRtcData: answer,
+        roomId
+      });
+    });
   }
 
   async host(roomId: string) {
+    this.setCndExhanger(roomId);
     this.socket.on("game-clientJoin", async () => {
       const offer = await this.p2p.createOffer();
       await this.p2p.setLocalDescription(offer);
-      this.p2p.onicecandidate = ({ candidate }) => {
-        console.log("cnd:", candidate)
-        if (candidate === null) {
-          this.socket.emit("webrtc", {
-            webRtcData: offer,
-            roomId
-          });
-          this.addAllGatheredCandidates();
-        } else {
-          this.socket.emit("ICE-candidate", { candidate, roomId });
-        }
-      }
+      this.socket.emit("webrtc-offer", {
+        webRtcData: offer,
+        roomId
+      });
     });
-    this.socket.on("webrtc", async ({ webRtcData }) => {
-      if (webRtcData.type === "offer") {
-        throw `Shouldnt get offer!`;
-      } else {
-        console.log("host getting answer:", webRtcData);
-        await this.p2p.setRemoteDescription(webRtcData);
-      }
+    this.socket.on("webrtc-answer", async ({ webRtcData }) => {
+      await this.p2p.setRemoteDescription(webRtcData);
     });
   }
 }

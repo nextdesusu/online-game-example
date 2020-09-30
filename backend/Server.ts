@@ -95,13 +95,18 @@ export default class Server {
         socketClient.join(id);
         console.log("host join room:", id);
         this.socketIO.to(socketClient.id).emit("game-roomHostResponse", { roomId: id });
+        this.socketIO.emit("game-roomsUpdate", { rooms: this.rooms });
       });
-      socketClient.on("webrtc", (data) => {
-        socketClient.broadcast.to(data.roomId).emit("webrtc", data);
+      socketClient.on("webrtc-offer", (data) => {
+        socketClient.broadcast.to(data.roomId).emit("webrtc-offer", data);
       });
-      socketClient.on("ICE-candidate", (data) => {
-        socketClient.broadcast.to(data.roomId).emit("ICE-candidate", data.candidate);
+      socketClient.on("webrtc-answer", (data) => {
+        socketClient.broadcast.to(data.roomId).emit("webrtc-answer", data);
+      });
+      socketClient.on("ICE-exhangeCandidates", (data) => {
+        socketClient.broadcast.to(data.roomId).emit("ICE-exhangeCandidates", data.candidates);
       })
+
       /*
       socket.on("channel", (data): void => {
         socket.join(data.channel);

@@ -13,4 +13,5 @@
 </div>
 <div *ngIf="roomId !== null">
   <h1>room: {{roomId}}</h1>
+  <app-room-chat (onMessageSend)="messageSendEvent($event)"></app-room-chat>
 </div>

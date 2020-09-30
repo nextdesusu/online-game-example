@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { gameType, gameOption, hostEvent } from "./types";
+import { gameType, gameOption, hostEvent, MessageEvent } from "./types";
 import Connection from "../connection";
 
 @Component({
@@ -23,6 +23,11 @@ export class AppComponent implements OnInit {
     this.login = event.login;
     const conn = new Connection(event.login);
     this.connection = conn;
+  }
+
+  messageSendEvent(event: MessageEvent) {
+    console.log("sending msg", event);
+    this.connection.sendMessage(event);
   }
 
   roomSelectedEvent(event: string) {

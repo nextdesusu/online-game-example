@@ -1,3 +1,5 @@
+import { User } from "../connection";
+
 export enum gameType {
   ticTacToe,
 }
@@ -26,3 +28,10 @@ export interface InputProps {
   placeholder?: string;
   pattern?: string;
 }
+
+export interface Message {
+  text: string;
+  date: Date;
+}
+
+export type MessageEvent = Message;
