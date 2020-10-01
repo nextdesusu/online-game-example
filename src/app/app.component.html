@@ -1,7 +1,7 @@
-<div *ngIf="login === null && roomId === null">
+<div *ngIf="login === null">
   <app-login-menu (loginEvent)="loginEvent($event)"></app-login-menu>
 </div>
-<div *ngIf="login !== null && roomId === null">
+<div *ngIf="login !== null && currentRoom === null">
   <app-host-menu
     (roomHostedEvent)="roomHostedEvent($event)"
     [gameOptions]="gameOptions"
@@ -11,7 +11,13 @@
     [rooms]="connection === null ? [] : connection.rooms"
   ></app-join-menu>
 </div>
-<div *ngIf="roomId !== null">
-  <h1>room: {{roomId}}</h1>
-  <app-room-chat (onMessageSend)="messageSendEvent($event)"></app-room-chat>
+<div *ngIf="currentRoom !== null">
+  <app-room-chat
+    [messages]="connection.messages.length === 0 ? [] : connection.messages"
+    (onMessageSend)="messageSendEvent($event)"
+  ></app-room-chat>
+  <app-game-canvas
+    [props]="canvasParameters"
+    (canvasCreation)="canvasCreationEvent($event)"
+  ></app-game-canvas>
 </div>

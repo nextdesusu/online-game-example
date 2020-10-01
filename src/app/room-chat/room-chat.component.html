@@ -1,2 +1,8 @@
+<ul>
+  <li *ngFor="let message of messages">
+    <h5>{{message.date}}</h5>
+    {{message.author.nickname}}: {{message.text}}
+  <li>
+</ul>
 <app-input (onInput)="getInput($event)"></app-input>
 <button class="std-button" (click)="submit()">send message</button>

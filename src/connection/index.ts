@@ -20,8 +20,11 @@ export default class Connection {
   private channel: RTCDataChannel | null;
   private p2p: RTCPeerConnection | null;
   private _rooms: Array<any>;
+  private _mesages: Array<any>;
+  private _connectionEstablished: boolean = false;
   constructor(userName: string) {
     this._rooms = [];
+    this._mesages = [];
     this.user = null;
     this.channel = null;
     this.p2p = null;
@@ -53,6 +56,9 @@ export default class Connection {
   private createP2P(): void {
     this.p2p = new RTCPeerConnection();
     this.p2p.onconnectionstatechange = () => {
+      if (this.p2p.connectionState === "connected") {
+        this._connectionEstablished = true;
+      }
       console.log("connection state:", this.p2p.connectionState);
     }
   }
@@ -62,8 +68,18 @@ export default class Connection {
       throw `P2P is null!`;
     }
     this.channel = this.p2p.createDataChannel("game", { negotiated: true, id: 0 });
-    this.channel.onmessage = (e) => console.log(`messsage: > ${e.data}`);
-    //this.channel.onopen = () => {console.log("channel opened");};
+    this.channel.onopen = () => { console.log("channel opened"); };
+    this.channel.onmessage = (event: any) => {
+      const codeChar = event.data[0];
+      const msg = JSON.parse(event.data.slice(2)) || "";
+      switch (codeChar) {
+        case "m":
+          this._mesages.push(msg);
+          console.log(`messsage: ${msg}`);
+          break;
+        case "g": return;
+      }
+    }
   }
 
   private fetchRooms(): void {
@@ -90,14 +106,23 @@ export default class Connection {
     return this._rooms;
   }
 
+  get messages() {
+    return this._mesages;
+  }
+
+  get connectionEstablished() {
+    return this._connectionEstablished;
+  }
+
   sendMessage(msgData: { text: string, date: Date }) {
     const msg: messageToSend = {
       ...msgData,
       author: this.user,
     };
+    this._mesages.push(msg);
     const stringified = JSON.stringify(msg);
-    console.log("sending:", stringified);
-    this.channel.send(`m:${stringified}`);
+    //console.log("sending:", stringified);
+    this.channel.send(`m#${stringified}`);
   }
 
   createRoom(event: hostEvent, onCreationCb: (roomId: string) => void) {

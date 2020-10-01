@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, } from '@angular/core';
+import { Component, Output, EventEmitter, Input } from '@angular/core';
 import { MessageEvent } from "../types";
 
 @Component({
@@ -8,15 +8,14 @@ import { MessageEvent } from "../types";
 })
 export class RoomChatComponent {
   private message: string = "";
+  @Input() messages: Array<any>;
   @Output() onMessageSend: EventEmitter<MessageEvent> = new EventEmitter<MessageEvent>();
   constructor() { }
   getInput(event: any): void {
     this.message = event.value;
   }
   submit(): void {
-    console.log("sss");
     const text = this.message.trim();
-    console.log("submitting:", text);
     if (text !== "") {
       this.onMessageSend.emit({
         text,

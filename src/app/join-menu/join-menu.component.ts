@@ -7,12 +7,15 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 })
 export class JoinMenuComponent {
   @Input() rooms: Array<any>;
-  @Output() roomJoinEvent: EventEmitter<string> = new EventEmitter<string>();
+  @Output() roomJoinEvent: EventEmitter<string> = new EventEmitter<any>();
   constructor() { }
 
   onClick(event: any): void {
-    const id: string | null = event.target.getAttribute("data-room-id");
+    const id: any | null = event.target.getAttribute("data-room-id");
     if (id === null) return;
-    this.roomJoinEvent.emit(id);
+    const room = this.rooms.find((room) => room.id === id);
+    if (room) {
+      this.roomJoinEvent.emit(room);
+    }
   }
 }
