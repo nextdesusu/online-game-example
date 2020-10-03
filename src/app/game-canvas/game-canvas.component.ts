@@ -8,7 +8,7 @@ import {
   ElementRef
 } from '@angular/core';
 
-type canvasCtxEventEmitter = EventEmitter<CanvasRenderingContext2D>;
+type canvasCtxEventEmitter = EventEmitter<HTMLCanvasElement>;
 
 @Component({
   selector: 'app-game-canvas',
@@ -17,12 +17,13 @@ type canvasCtxEventEmitter = EventEmitter<CanvasRenderingContext2D>;
 })
 export class GameCanvasComponent implements OnInit {
   @Input() props: { width: number, height: number };
-  @Output() canvasCreation: canvasCtxEventEmitter = new EventEmitter<CanvasRenderingContext2D>();
+  @Output() canvasCreation: canvasCtxEventEmitter = new EventEmitter<HTMLCanvasElement>();
   @ViewChild("canvasNode", { static: true }) canvasNode: ElementRef;
   constructor() { }
 
   ngOnInit(): void {
     const canvasNode = this.canvasNode.nativeElement;
+    console.log("props:", this.props);
     if (canvasNode) {
       const {
         width,
@@ -30,8 +31,7 @@ export class GameCanvasComponent implements OnInit {
       } = this.props;
       canvasNode.width = width;
       canvasNode.height = height;
-      const ctx = canvasNode.getContext('2d');
-      this.canvasCreation.emit(ctx);
+      this.canvasCreation.emit(canvasNode);
     } else {
       throw "Unexpected error canvas node is unacessible!";
     }

@@ -11,11 +11,11 @@ import TicTacToe from "../games/tic-tac-toe";
 })
 export class AppComponent implements OnInit {
   private connection: Connection | null = null;
-  private context2D: CanvasRenderingContext2D | null = null;
+  private isHost: boolean = false;
   currentRoom: any | null = null;
   login: string | null = null;
 
-  canvasParameters: { width: 500, height: 500 };
+  canvasParameters = { width: 600, height: 600 };
 
   gameOptions: Array<gameOption> = [
     { type: gameType.ticTacToe, name: "tic-tac-toe" }
@@ -38,6 +38,7 @@ export class AppComponent implements OnInit {
   roomSelectedEvent(event: any) {
     this.currentRoom = event;
     this.connection.join(event.id);
+    this.isHost = false;
     console.log("room:", this.currentRoom);
     //console.log("roomId:", this.roomId);
   }
@@ -50,11 +51,22 @@ export class AppComponent implements OnInit {
         id: roomId
       }
     });
+    this.isHost = true;
     console.log("room:", this.currentRoom);
   }
 
-  canvasCreationEvent(ctx: CanvasRenderingContext2D): void {
-    this.context2D = ctx;
-    console.log("canvas created", ctx);
+  canvasCreationEvent(canvas: HTMLCanvasElement): void {
+    console.log()
+    const { width } = this.canvasParameters;
+    switch (this.currentRoom.type) {
+      case gameType.ticTacToe:
+        if (this.isHost) {
+          return TicTacToe.host(this.connection, canvas, width);
+        } else {
+          return TicTacToe.join(this.connection, canvas, width);
+        }
+      default:
+        throw `Unknown game type! ${this.currentRoom.type}`;
+    }
   }
 }

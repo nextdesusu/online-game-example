@@ -1,1 +1,4 @@
-<canvas #canvasNode></canvas>
+<canvas
+  [ngStyle]="{ 'width.px': props.width, 'height.px': props.height }"
+  #canvasNode
+></canvas>
