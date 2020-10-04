@@ -8,6 +8,7 @@ const genId = (): string => `${genP()}-${genP()}-${genP()}-${genP()}`;
 interface User {
   nickname: string;
   id: string;
+  hosted: string | null;
 }
 
 interface Room {
@@ -23,23 +24,25 @@ export default class Server {
   private httpServer: HTTPServer;
   private socketIO: SocketIOServer;
   private port: number;
-  private rooms: Array<Room>;
+  private rooms: Map<string, Room>;
+  private users: Map<string, User>;
 
   constructor(port: number) {
     this.app = express();
     this.httpServer = createServer(this.app);
     this.socketIO = new socketIO(this.httpServer);
     this.port = port;
-    this.rooms = [];
+    this.rooms = new Map();
+    this.users = new Map();
     this.handleSocketConnection();
   }
 
   private addRoom(room: Room): void {
-    this.rooms.push(room);
+    this.rooms.set(room.id, room);
   }
 
   private getRoomById(roomId: string): Room | null {
-    const room: Room | undefined = this.rooms.find((room: Room) => room.id === roomId);
+    const room: Room | undefined = this.rooms.get(roomId);//.find((room: Room) => room.id === roomId);
     return room === undefined ? null : room;
   }
 
@@ -56,32 +59,44 @@ export default class Server {
     room.client = client;
   }
 
+  get roomsArray() {
+    return Array.from(this.rooms.values());
+  }
+
   private handleSocketConnection(): void {
     this.socketIO.on("connect", (socketClient: SocketIO.Socket) => {
-      socketClient.on("game-userIdFetched", () => {
-        this.socketIO.to(socketClient.id).emit("game-userIdFullfilled",
+      socketClient.on("game-userJoined", (data) => {
+        const user: User = {
+          nickname: data.nickname,
+          id: genId(),
+          hosted: null,
+        }
+        this.socketIO.to(socketClient.id).emit("game-userId",
           {
-            id: genId(),
+            id: user.id,
             socketId: socketClient.id
           }
         );
+        this.users.set(socketClient.id, user);
       });
       socketClient.on("game-roomsRequest", () => {
-        this.socketIO.to(socketClient.id).emit("game-roomsRequestFullfilled", { rooms: this.rooms });
+        this.socketIO.to(socketClient.id).emit("game-roomsRequestFullfilled", { rooms: this.roomsArray });
       });
       socketClient.on("game-roomJoinQuery", (data) => {
-        const { roomId, user } = data;
+        const user = this.users.get(socketClient.id);
+        if (user === undefined) return;
+        const { roomId } = data;
         this.addClientToRoom(roomId, user);
         socketClient.join(roomId);
         this.socketIO.to(socketClient.id).emit("game-roomJoinResponse", { succes: true });
         socketClient.broadcast.to(roomId).emit("game-clientJoin");
-        console.log("client join room:", roomId);
       });
       socketClient.on("game-roomHostQuery", (data) => {
+        const host = this.users.get(socketClient.id);
+        if (host === undefined) return;
         const {
           roomName,
           gameType,
-          host
         } = data;
         const id = genId();
         const room: Room = {
@@ -93,9 +108,10 @@ export default class Server {
         };
         this.addRoom(room);
         socketClient.join(id);
-        console.log("host join room:", id);
         this.socketIO.to(socketClient.id).emit("game-roomHostResponse", { roomId: id });
-        this.socketIO.emit("game-roomsUpdate", { rooms: this.rooms });
+        this.socketIO.emit("game-roomsUpdate", { rooms: this.roomsArray });
+
+        host.hosted = room.id;
       });
       socketClient.on("webrtc-offer", (data) => {
         socketClient.broadcast.to(data.roomId).emit("webrtc-offer", data);
@@ -105,24 +121,13 @@ export default class Server {
       });
       socketClient.on("ICE-exhangeCandidates", (data) => {
         socketClient.broadcast.to(data.roomId).emit("ICE-exhangeCandidates", data.candidates);
+      });
+      socketClient.on("disconnect", () => {
+        const user = this.users.get(socketClient.id);
+        this.rooms.delete(user?.hosted || "");
+        this.users.delete(socketClient.id);
+        this.socketIO.emit("game-roomsUpdate", { rooms: this.roomsArray });
       })
-
-      /*
-      socket.on("channel", (data): void => {
-        socket.join(data.channel);
-        socket.to(data.channel).emit("new-user", { socketId: socket.id });
-      });
-      socket.on("webrtc", (data) => {
-        console.log("type", data.webRtcData.type);
-        socket.to(data.channel).emit("webrtc", data);
-      });
-      socket.on("ICE-message", (data) => {
-        socket.to(data.channel).emit("ICE-message", data);
-      })
-      socket.on("disconnect", (data) => {
-
-      });
-      */
     });
   }
 

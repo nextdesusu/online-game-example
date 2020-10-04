@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { gameType, gameOption, hostEvent, MessageEvent } from "./types";
+import { Component } from '@angular/core';
+import { gameType, gameOption, hostEvent, loginEvent, MessageEvent, RoomSelectedEvent, Room } from "./types";
 
 import Connection from "../connection";
 import TicTacToe from "../games/tic-tac-toe";
@@ -9,7 +9,7 @@ import TicTacToe from "../games/tic-tac-toe";
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   private connection: Connection | null = null;
   private isHost: boolean = false;
   currentRoom: any | null = null;
@@ -21,10 +21,7 @@ export class AppComponent implements OnInit {
     { type: gameType.ticTacToe, name: "tic-tac-toe" }
   ];
 
-  ngOnInit(): void {
-  }
-
-  loginEvent(event: any) {
+  loginEvent(event: loginEvent) {
     this.login = event.login;
     const conn = new Connection(event.login);
     this.connection = conn;
@@ -35,12 +32,10 @@ export class AppComponent implements OnInit {
     this.connection.sendMessage(event);
   }
 
-  roomSelectedEvent(event: any) {
-    this.currentRoom = event;
-    this.connection.join(event.id);
+  roomSelectedEvent(event: RoomSelectedEvent) {
+    this.currentRoom = event.room;
+    this.connection.join(this.currentRoom.id);
     this.isHost = false;
-    console.log("room:", this.currentRoom);
-    //console.log("roomId:", this.roomId);
   }
 
   roomHostedEvent(event: hostEvent) {
@@ -52,11 +47,9 @@ export class AppComponent implements OnInit {
       }
     });
     this.isHost = true;
-    console.log("room:", this.currentRoom);
   }
 
   canvasCreationEvent(canvas: HTMLCanvasElement): void {
-    console.log()
     const { width } = this.canvasParameters;
     switch (this.currentRoom.type) {
       case gameType.ticTacToe:

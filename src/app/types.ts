@@ -35,3 +35,15 @@ export interface Message {
 }
 
 export type MessageEvent = Message;
+
+export interface Room {
+  host: User;
+  client: User | null;
+  name: string;
+  id: string;
+  type: number;
+}
+
+export interface RoomSelectedEvent {
+  room: Room;
+}

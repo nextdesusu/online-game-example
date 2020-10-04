@@ -1,5 +1,5 @@
 import io, { Socket as SocketValue } from 'socket.io-client';
-import { hostEvent } from "../app/types";
+import { hostEvent, Room } from "../app/types";
 
 type Socket = typeof SocketValue;
 
@@ -21,7 +21,7 @@ export default class Connection {
   private user: User | null;
   private channel: RTCDataChannel | null;
   private p2p: RTCPeerConnection | null;
-  private _rooms: Array<any>;
+  private _rooms: Array<Room>;
   private _mesages: Array<any>;
   private _connectionEstablished: boolean = false;
   private gameDataCb: cbType | null;
@@ -44,9 +44,9 @@ export default class Connection {
 
   private initSocket(userName: string): void {
     this.socket.on("connect", () => {
-      this.socket.emit("game-userIdFetched");
+      this.socket.emit("game-userJoined", { nickname: userName });
     });
-    this.socket.on("game-userIdFullfilled", (data) => {
+    this.socket.on("game-userId", (data) => {
       this.user = {
         nickname: userName,
         id: data.id
@@ -54,6 +54,7 @@ export default class Connection {
       this.fetchRooms();
     })
     const applyRooms = (data) => {
+      console.log("applyRooms -> data:", data);
       this._rooms = data.rooms;
     }
     this.socket.on("game-roomsRequestFullfilled", applyRooms);
@@ -153,7 +154,7 @@ export default class Connection {
   }
 
   createRoom(event: hostEvent, onCreationCb: (roomId: string) => void) {
-    this.socket.emit("game-roomHostQuery", { roomName: event.name, gameType: event.type, host: this.user });
+    this.socket.emit("game-roomHostQuery", { roomName: event.name, gameType: event.type });
     this.socket.on("game-roomHostResponse", (data) => {
       onCreationCb(data.roomId);
     });
@@ -162,7 +163,7 @@ export default class Connection {
 
   async join(roomId: string) {
     this.setCndExhanger(roomId);
-    this.socket.emit("game-roomJoinQuery", { roomId, user: this.user });
+    this.socket.emit("game-roomJoinQuery", { roomId });
     this.socket.on("webrtc-offer", async ({ webRtcData }) => {
       await this.p2p.setRemoteDescription(webRtcData);
       const answer = await this.p2p.createAnswer();

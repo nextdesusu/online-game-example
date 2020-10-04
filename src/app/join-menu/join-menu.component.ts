@@ -1,4 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Room, RoomSelectedEvent } from "../types";
 
 @Component({
   selector: 'app-join-menu',
@@ -6,16 +7,16 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
   styleUrls: ['./join-menu.component.css']
 })
 export class JoinMenuComponent {
-  @Input() rooms: Array<any>;
-  @Output() roomJoinEvent: EventEmitter<string> = new EventEmitter<any>();
+  @Input() rooms: Array<Room>;
+  @Output() roomJoinEvent: EventEmitter<RoomSelectedEvent> = new EventEmitter<RoomSelectedEvent>();
   constructor() { }
 
   onClick(event: any): void {
-    const id: any | null = event.target.getAttribute("data-room-id");
+    const id: string | null = event.target.getAttribute("data-room-id");
     if (id === null) return;
-    const room = this.rooms.find((room) => room.id === id);
+    const room = this.rooms.find((room: Room) => room.id === id);
     if (room) {
-      this.roomJoinEvent.emit(room);
+      this.roomJoinEvent.emit({ room });
     }
   }
 }
