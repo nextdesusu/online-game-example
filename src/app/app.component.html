@@ -11,13 +11,21 @@
     [rooms]="connection === null ? [] : connection.rooms"
   ></app-join-menu>
 </div>
-<div *ngIf="currentRoom !== null">
+<div *ngIf="currentRoom !== null" class="app-in-room">
+  <app-game-canvas
+    [props]="{
+      width: canvasParameters.width,
+      height: canvasParameters.height,
+      isOverlapped: !connection.connectionEstablished && this.wonBy === ''
+    }"
+    (canvasCreation)="canvasCreationEvent($event)"
+    ><h2>{{canvasText}}</h2>
+  </app-game-canvas>
   <app-room-chat
-    [messages]="connection.messages.length === 0 ? [] : connection.messages"
+    [props]="{
+      messages: connection.messages.length === 0 ? [] : connection.messages,
+      disabled: !connection.connectionEstablished
+    }"
     (onMessageSend)="messageSendEvent($event)"
   ></app-room-chat>
-  <app-game-canvas
-    [props]="canvasParameters"
-    (canvasCreation)="canvasCreationEvent($event)"
-  ></app-game-canvas>
 </div>

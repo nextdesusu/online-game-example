@@ -16,7 +16,7 @@ type canvasCtxEventEmitter = EventEmitter<HTMLCanvasElement>;
   styleUrls: ['./game-canvas.component.css']
 })
 export class GameCanvasComponent implements OnInit {
-  @Input() props: { width: number, height: number };
+  @Input() props: { width: number, height: number, isOverlapped: boolean };
   @Output() canvasCreation: canvasCtxEventEmitter = new EventEmitter<HTMLCanvasElement>();
   @ViewChild("canvasNode", { static: true }) canvasNode: ElementRef;
   constructor() { }

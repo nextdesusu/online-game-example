@@ -1,7 +1,7 @@
 :host {
-  width: 100%;
-  height: 100%;
-  display: block;
+  display: grid;
+  grid-template-rows: 80% 10% 10%;
+  grid-gap: 0.3em;
 }
 
 :host > ul {

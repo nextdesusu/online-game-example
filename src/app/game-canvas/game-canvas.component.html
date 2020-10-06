@@ -1,4 +1,17 @@
 <canvas
-  [ngStyle]="{ 'width.px': props.width, 'height.px': props.height }"
+  [ngStyle]="{
+    'width.px': props.width,
+    'height.px': props.height,
+    display: props.isOverlapped ? 'none' : 'block'
+  }"
   #canvasNode
 ></canvas>
+<div
+  [ngStyle]="{
+    'width.px': props.width,
+    'height.px': props.height,
+    display: !props.isOverlapped ? 'none' : 'flex'
+  }"
+>
+  <ng-content></ng-content>
+</div>

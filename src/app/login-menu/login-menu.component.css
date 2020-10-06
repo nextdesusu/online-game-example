@@ -2,7 +2,7 @@
   margin: auto auto;
   display: grid;
   grid-template-rows: 1fr .5fr;
-  width: 50vw;
+  width: 40vw;
   grid-gap: 1em;
 }
 

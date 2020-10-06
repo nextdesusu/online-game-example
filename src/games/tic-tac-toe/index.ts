@@ -6,6 +6,13 @@ const enum Figure {
   o
 };
 
+export interface TicTacArgs {
+  connection: Connection;
+  canvasNode: HTMLCanvasElement;
+  size: number;
+  endCb: (arg: string) => void
+}
+
 type TicTacToeRow = [Figure, Figure, Figure];
 
 type TicTacToeState = [
@@ -14,8 +21,8 @@ type TicTacToeState = [
   TicTacToeRow
 ];
 
-const getClenRow = (): TicTacToeRow => [Figure.e, Figure.e, Figure.e];
-const getInitialState = (): TicTacToeState => [getClenRow(), getClenRow(), getClenRow()];
+const getRow = (): TicTacToeRow => [Figure.e, Figure.e, Figure.e];
+const getInitialState = (): TicTacToeState => [getRow(), getRow(), getRow()];
 
 export default class TicTacToe {
   private _state: TicTacToeState = getInitialState();
@@ -23,10 +30,17 @@ export default class TicTacToe {
   private ctx: any;
   private size: number;
   private _cellSize: number;
-  constructor(ctx, size) {
+  private _winner: Figure = Figure.e;
+  private endCb: (arg: string) => void;
+  constructor(ctx, size, endCb) {
     this.ctx = ctx;
     this.size = size;
     this._cellSize = Math.floor(size / 3);
+    this.endCb = endCb;
+  }
+
+  get winner(): Figure {
+    return this._winner;
   }
 
   get state() {
@@ -41,9 +55,10 @@ export default class TicTacToe {
     return this._cellSize;
   }
 
-  static host(connection: Connection, canvasNode: HTMLCanvasElement, size: number): void {
+  static host({connection, canvasNode, size, endCb}: TicTacArgs): void {
+    console.log("host node:", canvasNode);
     const ctx = canvasNode.getContext("2d");
-    const game = new TicTacToe(ctx, size);
+    const game = new TicTacToe(ctx, size, endCb);
     const hostFigure = Figure.x;
 
     canvasNode.addEventListener("click", (event: any) => {
@@ -70,9 +85,9 @@ export default class TicTacToe {
     game.start();
   }
 
-  static join(connection: Connection, canvasNode: HTMLCanvasElement, size: number): void {
+  static join({connection, canvasNode, size, endCb}: TicTacArgs): void {
     const ctx = canvasNode.getContext("2d");
-    const game = new TicTacToe(ctx, size);
+    const game = new TicTacToe(ctx, size, endCb);
     const clientFigure = Figure.o;
 
     canvasNode.addEventListener("click", (event: any) => {
@@ -97,8 +112,26 @@ export default class TicTacToe {
     this.redrawCtx();
   }
 
-  isOver(): boolean {
-    return false;
+  private checkForWinner(): void {
+    if (this._winner !== Figure.e) return;
+    const board = this._state;
+    for (let i = 0; i < 3; i += 1) {
+      if (board[i][0] === board[i][1] && board[i][1] === board[i][2]) {
+        this._winner = board[i][0];
+      }
+      if (board[0][i] === board[1][i] && board[1][i] === board[2][i]) {
+        this._winner = board[0][i];
+      }
+    }
+    if (board[0][0] === board[1][1] && board[1][1] === board[2][2]) {
+      this._winner = board[0][0];
+    }
+    if (board[0][2] === board[1][1] && board[1][1] === board[2][0]) {
+      this._winner = board[0][2];
+    }
+    if (this._winner !== Figure.e) {
+      this.endCb(this._winner === Figure.x ? "x" : "o");
+    }
   }
 
   private drawX(xStart, yStart, xEnd, yEnd, padding) {
@@ -160,7 +193,10 @@ export default class TicTacToe {
   }
 
   private endTurn(): void {
-    this._currentFigure = this._currentFigure === Figure.x ? Figure.o : Figure.x;
+    if (!this._winner) {
+      this._currentFigure = this._currentFigure === Figure.x ? Figure.o : Figure.x;
+      this.checkForWinner();
+    }
   }
 
   applyHostReponse(state: TicTacToeState) {

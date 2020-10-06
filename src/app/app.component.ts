@@ -12,6 +12,7 @@ import TicTacToe from "../games/tic-tac-toe";
 export class AppComponent {
   private connection: Connection | null = null;
   private isHost: boolean = false;
+  wonBy: string = "";
   currentRoom: any | null = null;
   login: string | null = null;
 
@@ -28,7 +29,6 @@ export class AppComponent {
   }
 
   messageSendEvent(event: MessageEvent) {
-    console.log("sending msg", event);
     this.connection.sendMessage(event);
   }
 
@@ -49,14 +49,28 @@ export class AppComponent {
     this.isHost = true;
   }
 
+  get canvasText() {
+    return this.wonBy === '' ? 'Wait for other player!' : `Winner: ${this.wonBy}`;
+  }
+
   canvasCreationEvent(canvas: HTMLCanvasElement): void {
     const { width } = this.canvasParameters;
+    const cb = (arg: string) => {
+      console.log("game won by:", arg);
+      this.wonBy = arg;
+    }
+    const args = {
+      connection: this.connection,
+      canvasNode: canvas,
+      size: width,
+      endCb: cb
+    }
     switch (this.currentRoom.type) {
       case gameType.ticTacToe:
         if (this.isHost) {
-          return TicTacToe.host(this.connection, canvas, width);
+          return TicTacToe.host(args);
         } else {
-          return TicTacToe.join(this.connection, canvas, width);
+          return TicTacToe.join(args);
         }
       default:
         throw `Unknown game type! ${this.currentRoom.type}`;

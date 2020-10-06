@@ -8,4 +8,13 @@
   width: 100%;
   height: 100%;
   border: 1px solid black;
+  z-index: 2;
+}
+
+:host > div {
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid black;
 }
