@@ -23,7 +23,8 @@ export class HostMenuComponent {
   }
 
   getName(event: any) {
-    console.log(event);
+    this.gameId = Number(event.target.value);
+    console.log("gameId:", this.gameId);
   }
 
   onClick() {

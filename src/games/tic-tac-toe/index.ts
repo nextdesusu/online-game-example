@@ -1,17 +1,10 @@
-import Connection from "../../connection";
+import { gameArgs, strCb } from "../types";
 
 const enum Figure {
   e,
   x,
   o
 };
-
-export interface TicTacArgs {
-  connection: Connection;
-  canvasNode: HTMLCanvasElement;
-  size: number;
-  endCb: (arg: string) => void
-}
 
 type TicTacToeRow = [Figure, Figure, Figure];
 
@@ -27,11 +20,11 @@ const getInitialState = (): TicTacToeState => [getRow(), getRow(), getRow()];
 export default class TicTacToe {
   private _state: TicTacToeState = getInitialState();
   private _currentFigure: Figure = Figure.x;
-  private ctx: any;
+  private ctx: CanvasRenderingContext2D;
   private size: number;
   private _cellSize: number;
   private _winner: Figure = Figure.e;
-  private endCb: (arg: string) => void;
+  private endCb: strCb;
   constructor(ctx, size, endCb) {
     this.ctx = ctx;
     this.size = size;
@@ -55,7 +48,7 @@ export default class TicTacToe {
     return this._cellSize;
   }
 
-  static host({connection, canvasNode, size, endCb}: TicTacArgs): void {
+  static host({connection, canvasNode, size, endCb}: gameArgs): void {
     console.log("host node:", canvasNode);
     const ctx = canvasNode.getContext("2d");
     const game = new TicTacToe(ctx, size, endCb);
@@ -85,7 +78,7 @@ export default class TicTacToe {
     game.start();
   }
 
-  static join({connection, canvasNode, size, endCb}: TicTacArgs): void {
+  static join({connection, canvasNode, size, endCb}: gameArgs): void {
     const ctx = canvasNode.getContext("2d");
     const game = new TicTacToe(ctx, size, endCb);
     const clientFigure = Figure.o;

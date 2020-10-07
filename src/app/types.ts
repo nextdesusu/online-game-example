@@ -2,6 +2,7 @@ import { User } from "../connection";
 
 export enum gameType {
   ticTacToe,
+  paddleBall
 }
 
 export interface hostEvent {

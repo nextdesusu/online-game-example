@@ -3,8 +3,8 @@
   >game name</app-input
 >
 <div class="grid-2-cols">
-  <select class="std-select" onchange="getName($event)">
-    <option *ngFor="let opt of gameOptions" value="opt.type">
+  <select class="std-select" (change)="getName($event)">
+    <option *ngFor="let opt of gameOptions" value="{{opt.type}}">
       {{ opt.name }}
     </option>
   </select>

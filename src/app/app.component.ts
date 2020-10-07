@@ -3,6 +3,7 @@ import { gameType, gameOption, hostEvent, loginEvent, MessageEvent, RoomSelected
 
 import Connection from "../connection";
 import TicTacToe from "../games/tic-tac-toe";
+import PaddleBall from "../games/paddle_ball";
 
 @Component({
   selector: 'app-root',
@@ -19,7 +20,8 @@ export class AppComponent {
   canvasParameters = { width: 600, height: 600 };
 
   gameOptions: Array<gameOption> = [
-    { type: gameType.ticTacToe, name: "tic-tac-toe" }
+    { type: gameType.ticTacToe, name: "tic-tac-toe" },
+    { type: gameType.paddleBall, name: "paddle ball" },
   ];
 
   loginEvent(event: loginEvent) {
@@ -46,6 +48,7 @@ export class AppComponent {
         id: roomId
       }
     });
+    console.log("game is:", this.currentRoom);
     this.isHost = true;
   }
 
@@ -64,16 +67,24 @@ export class AppComponent {
       canvasNode: canvas,
       size: width,
       endCb: cb
-    }
+    };
+    let currentGame = null;
+    console.log("this.currentRoom.type:", this.currentRoom.type)
     switch (this.currentRoom.type) {
       case gameType.ticTacToe:
-        if (this.isHost) {
-          return TicTacToe.host(args);
-        } else {
-          return TicTacToe.join(args);
-        }
+        currentGame = TicTacToe;
+        break;
+      case gameType.paddleBall:
+        console.log("paddleBall");
+        currentGame = PaddleBall;
+        break;
       default:
         throw `Unknown game type! ${this.currentRoom.type}`;
+    }
+    if (this.isHost) {
+      currentGame.host(args);
+    } else {
+      currentGame.join(args);
     }
   }
 }
