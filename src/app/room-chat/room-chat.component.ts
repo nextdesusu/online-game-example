@@ -1,8 +1,8 @@
 import { Component, Output, EventEmitter, Input } from '@angular/core';
-import { MessageEvent } from "../types";
+import { MessageEvent, Message } from "../types";
 
 interface RoomChatProps {
-  messages: Array<any>;
+  messages: Array<Message>;
   disabled?: boolean;
 }
 

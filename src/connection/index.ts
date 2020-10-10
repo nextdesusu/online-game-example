@@ -1,5 +1,5 @@
 import io, { Socket as SocketValue } from 'socket.io-client';
-import { hostEvent, Room } from "../app/types";
+import { hostEvent, Room, Message } from "../app/types";
 
 type Socket = typeof SocketValue;
 
@@ -22,7 +22,7 @@ export default class Connection {
   private channel: RTCDataChannel | null;
   private p2p: RTCPeerConnection | null;
   private _rooms: Array<Room>;
-  private _mesages: Array<any>;
+  private _mesages: Array<Message>;
   private _connectionEstablished: boolean = false;
   private gameDataCb: cbType | null;
   constructor(userName: string) {
@@ -77,24 +77,20 @@ export default class Connection {
     }
     this.channel = this.p2p.createDataChannel("game", { negotiated: true, id: 0 });
     this.channel.onopen = () => {
-      const stringified = JSON.stringify(this.user);
-      //console.log("sending:", stringified);
-      this.channel.send(`p#${stringified}`);
+      const stringified = JSON.stringify({ key: "p", data: this.user });
+      this.channel.send(stringified);
     };
-    this.channel.onmessage = (event: any) => {
-      console.log("raw msg:", event.data);
-      const codeChar = event.data[0];
-      const msg = JSON.parse(event.data.slice(2)) || {};
+    this.channel.onmessage = (event: MessageEvent) => {
+      const msg = JSON.parse(event.data);
+      if (msg === null) return;
+      const codeChar = msg.key;
       switch (codeChar) {
         case "m":
           this._mesages.push(msg);
-          console.log(`messsage: ${msg}`);
           break;
         case "p":
-          console.log(`player joined! ${msg}`);
           break;
         case "g":
-          console.log(`game data arrived: ${msg}`);
           if (this.gameDataCb !== null) {
             this.gameDataCb(msg);
           }
@@ -143,14 +139,13 @@ export default class Connection {
       author: this.user,
     };
     this._mesages.push(msg);
-    const stringified = JSON.stringify(msg);
-    //console.log("sending:", stringified);
-    this.channel.send(`m#${stringified}`);
+    const stringified = JSON.stringify({ key: "m", data: msg });
+    this.channel.send(stringified);
   }
 
   sendGameData(data: string): void {
-    const stringified = JSON.stringify({ user: this.user, data });
-    this.channel.send(`g#${stringified}`);
+    const stringified = JSON.stringify({ key: "g", data });
+    this.channel.send(stringified);
   }
 
   createRoom(event: hostEvent, onCreationCb: (roomId: string) => void) {

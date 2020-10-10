@@ -30,6 +30,8 @@ const enum PADDLE_BALL_COLORS {
 
 const rand = () => Math.random() > .5 ? -1 : 1;
 
+const UPDATE_TIME = 10;
+
 const PADDLE_SIZE = Object.freeze({ width: 150, height: 20 });
 const PADDLE_SPEED = 2;
 
@@ -44,6 +46,18 @@ interface PaddleBallArgs {
   endCb: strCb;
 }
 
+interface gameScore {
+  host: number;
+  client: number;
+}
+
+interface dataToApply {
+  ballPos: Point;
+  hostP: Point;
+  clientP: Point;
+  score: gameScore;
+}
+
 export default class PaddleBall {
   private connection: Connection;
   private selfPaddle: Paddle;
@@ -52,12 +66,15 @@ export default class PaddleBall {
   private ctx: CanvasRenderingContext2D;
   private boardSize: number;
   private isHost: boolean;
+  private score: gameScore;
   private endCb: strCb;
   constructor({ connection, ctx, boardSize, isHost, endCb }: PaddleBallArgs) {
     this.connection = connection;
     this.ctx = ctx;
     this.boardSize = boardSize;
     this.endCb = endCb;
+
+    this.score = { host: 0, client: 0 };
     this.isHost = isHost;
 
     const middle = Math.floor(boardSize / 2);
@@ -87,20 +104,20 @@ export default class PaddleBall {
       isHost: true
     });
 
-    document.addEventListener("keydown", (event: any) => {
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
       if (event.keyCode === KEYS.LEFT) {
         game.setSPaddleState(paddleState.goingLeft);
       } else if (event.keyCode === KEYS.RIGHT) {
         game.setSPaddleState(paddleState.goingRight);
       }
     });
-    document.addEventListener("keyup", (event: any) => {
+    document.addEventListener("keyup", (event: KeyboardEvent) => {
       if (event.keyCode === KEYS.LEFT || event.keyCode === KEYS.RIGHT) {
         game.selfPaddle.state = paddleState.stand;
       }
     })
 
-    connection.setGameDataCb((gameData: any) => {
+    connection.setGameDataCb((gameData: { key: string, data: any }) => {
       const pState = Number(gameData.data);
       game.setOpPaddleState(pState);
     });
@@ -118,44 +135,43 @@ export default class PaddleBall {
       isHost: false
     });
 
-    document.addEventListener("keydown", (event: any) => {
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
       if (event.keyCode === KEYS.LEFT) {
         connection.sendGameData(String(paddleState.goingLeft));
       } else if (event.keyCode === KEYS.RIGHT) {
         connection.sendGameData(String(paddleState.goingRight));
       }
     });
-    document.addEventListener("keyup", (event: any) => {
+    document.addEventListener("keyup", (event: KeyboardEvent) => {
       if (event.keyCode === KEYS.LEFT || event.keyCode === KEYS.RIGHT) {
         connection.sendGameData(String(paddleState.stand));
       }
     })
 
-    connection.setGameDataCb((gameData: any) => {
+    connection.setGameDataCb((gameData: { key: string, data: any }) => {
       //apply host response
       const data = JSON.parse(gameData.data);
       if (data) {
-        game.applyGameData(gameData);
+        game.applyGameData(data);
       }
     });
 
     game.start();
   }
 
-  applyGameData(gameData: any) {
-    console.log("applying data:", gameData)
-    const { ballPos, hostP, clientP } = gameData;
+  applyGameData(gameData: dataToApply) {
+    const { ballPos, hostP, clientP, score } = gameData;
     this.ball.pos = ballPos;
     this.selfPaddle.pos = clientP;
     this.opPaddle.pos = hostP;
+    this.score = score;
   }
 
   start() {
-    const ms10 = 10;
     let time = Date.now();
     const cb = () => {
       const now = Date.now();
-      if (now - time > ms10) {
+      if (now - time > UPDATE_TIME) {
         this.update();
         time = now;
       }
@@ -186,33 +202,63 @@ export default class PaddleBall {
   }
 
   private movePaddle(paddle: Paddle) {
-    if (this.opPaddle.state !== 0) {
-      console.log("opPaddle.state:", this.opPaddle.state);
-    }
     if (paddle.state === paddleState.goingLeft) {
-      if (paddle === this.opPaddle) {
-        console.log("moving left opPaddle:", this.opPaddle);
-      }
-      if (paddle.pos.x > 0.1) {
+      if (paddle.pos.x > 0) {
         paddle.pos.x -= PADDLE_SPEED;
       }
     } else if (paddle.state === paddleState.goingRight) {
-      if (paddle === this.opPaddle) {
-        console.log("moving right opPaddle:", this.opPaddle);
-      }
       if ((paddle.pos.x + PADDLE_SIZE.width) < this.boardSize) {
         paddle.pos.x += PADDLE_SPEED;
       }
     }
   }
 
+  private paddleVsBall(paddle: Paddle): boolean {
+    const { x, y } = paddle.pos;
+    const { width, height } = PADDLE_SIZE;
+    const ballX = this.ball.pos.x;
+    const ballY = this.ball.pos.y;
+
+    let testX = ballX;
+    let testY = ballY;
+
+    // which edge is closest?
+    if (ballX < x) testX = x;      // test left edge
+    else if (ballX > x + width) testX = x + width;   // right edge
+    if (ballY < y) testY = y;      // top edge
+    else if (ballY > y + height) testY = y + height;   // bottom edge
+
+    // get distance from closest edges
+    const distX = ballX - testX;
+    const distY = ballY - testY;
+    const distance = Math.sqrt((distX * distX) + (distY * distY));
+    // if the distance is less than the radius, collision!
+    if (distance <= BALL_RADIUS) {
+      return true;
+    }
+    return false;
+  }
+
   private moveBall() {
-    const { vel, pos } = this.ball;
+    const { vel } = this.ball;
     this.ball.pos.x += BALL_SPEED * vel.x;
     this.ball.pos.y += BALL_SPEED * vel.y;
+  }
 
-    if ((pos.y + BALL_RADIUS) > this.boardSize || (pos.y - BALL_RADIUS) < 0) {
+  private handleCollisions(): void {
+    const { vel, pos } = this.ball;
+
+    if (this.paddleVsBall(this.selfPaddle) || this.paddleVsBall(this.opPaddle)) {
       vel.y *= -1;
+    }
+
+    if (pos.y + BALL_RADIUS > this.boardSize) {
+      vel.y = -1;
+      this.score.host += 1;
+    }
+    if (pos.y - BALL_RADIUS < 0) {
+      vel.y = 1;
+      this.score.client += 1;
     }
     if ((pos.x + BALL_RADIUS) > this.boardSize || (pos.x - BALL_RADIUS) < 0) {
       vel.x *= -1;
@@ -229,14 +275,29 @@ export default class PaddleBall {
     return JSON.stringify({
       ballPos: this.ball.pos,
       hostP: this.selfPaddle.pos,
-      clientP: this.opPaddle.pos
+      clientP: this.opPaddle.pos,
+      score: this.score
     });
   }
 
+  private showScore(): void {
+    const p1 = this.isHost ? "You" : "Oponent";
+    const p2 = this.isHost ? "Oponent" : "You";
+    const text = `${p1}: ${this.score.host} ${p2}: ${this.score.client}`;
+    const textPos = Math.round(this.boardSize / 2);
+    this.ctx.fillText(text, textPos, textPos);
+  }
 
   private update() {
+    const { client, host } = this.score;
+    if (client > 4 || host > 4) {
+      console.log("end cb called");
+      this.endCb(client > 4 ? "client" : "host");
+    }
+
     if (this.isHost) {
       this.moveAll();
+      this.handleCollisions();
       if (this.connection.connectionEstablished) {
         this.connection.sendGameData(this.currentGameData);
       }
@@ -254,5 +315,7 @@ export default class PaddleBall {
 
     this.ctx.fillStyle = PADDLE_BALL_COLORS.BALL;
     this.drawBall();
+
+    this.showScore();
   }
 }
