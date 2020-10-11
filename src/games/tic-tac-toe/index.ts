@@ -6,6 +6,15 @@ const enum Figure {
   o
 };
 
+const enum TIC_TAC_TOE {
+  END = "orange",
+  TEXT = "black",
+  X = "blue",
+  O = "red",
+  STRIPE = "black",
+  FILL = "white"
+}
+
 type TicTacToeRow = [Figure, Figure, Figure];
 
 type TicTacToeState = [
@@ -24,11 +33,13 @@ export default class TicTacToe {
   private size: number;
   private _cellSize: number;
   private _winner: Figure = Figure.e;
+  private isHost: boolean;
   private endCb: strCb;
-  constructor(ctx, size, endCb) {
+  constructor(ctx, size, endCb, isHost) {
     this.ctx = ctx;
     this.size = size;
     this._cellSize = Math.floor(size / 3);
+    this.isHost = isHost;
     this.endCb = endCb;
   }
 
@@ -48,42 +59,48 @@ export default class TicTacToe {
     return this._cellSize;
   }
 
-  static host({connection, canvasNode, size, endCb}: gameArgs): void {
-    console.log("host node:", canvasNode);
+  static host({ connection, canvasNode, size, endCb }: gameArgs): void {
     const ctx = canvasNode.getContext("2d");
-    const game = new TicTacToe(ctx, size, endCb);
+    const game = new TicTacToe(ctx, size, endCb, true);
     const hostFigure = Figure.x;
 
-    canvasNode.addEventListener("click", (event: any) => {
+    canvasNode.addEventListener("click", (event: MouseEvent) => {
       if (game.currentFigure !== hostFigure) return;
       const x = Math.floor(event.offsetX / game.cellSize) % size;
       const y = Math.floor(event.offsetY / game.cellSize) % size;
-      console.log("host x: " + x + " y: " + y);
       game.makeMove(x, y);
-      const data = JSON.stringify(game.state);
+      const toJson = {
+        state: game.state,
+        winner: game.winner
+      };
+      const data = JSON.stringify(toJson);
       connection.sendGameData(data);
     });
 
     connection.setGameDataCb((gameData: any) => {
       if (game.currentFigure === hostFigure) return;
-      console.log("tictactoe host: gameData", gameData);
       const parsed = JSON.parse(gameData.data);
       if (!parsed) return;
       const [x, y] = parsed;
       game.makeMove(x, y);
-      const data = JSON.stringify(game.state);
+
+      const toJson = {
+        state: game.state,
+        winner: game.winner
+      };
+      const data = JSON.stringify(toJson);
       connection.sendGameData(data);
     });
 
     game.start();
   }
 
-  static join({connection, canvasNode, size, endCb}: gameArgs): void {
+  static join({ connection, canvasNode, size, endCb }: gameArgs): void {
     const ctx = canvasNode.getContext("2d");
-    const game = new TicTacToe(ctx, size, endCb);
+    const game = new TicTacToe(ctx, size, endCb, false);
     const clientFigure = Figure.o;
 
-    canvasNode.addEventListener("click", (event: any) => {
+    canvasNode.addEventListener("click", (event: MouseEvent) => {
       if (game.currentFigure !== clientFigure) return;
       const x = Math.floor(event.offsetX / game.cellSize) % size;
       const y = Math.floor(event.offsetY / game.cellSize) % size;
@@ -92,10 +109,9 @@ export default class TicTacToe {
     });
 
     connection.setGameDataCb((gameData: any) => {
-      console.log("tictactoe join: gameData", gameData);
       const parsed = JSON.parse(gameData.data);
       if (!parsed) return;
-      game.applyHostReponse(parsed);
+      game.applyHostReponse(parsed.state, parsed.winner);
     });
 
     game.start();
@@ -106,7 +122,7 @@ export default class TicTacToe {
   }
 
   private checkForWinner(): void {
-    if (this._winner !== Figure.e) return;
+    if (this._winner > Figure.e) return;
     const board = this._state;
     for (let i = 0; i < 3; i += 1) {
       if (board[i][0] === board[i][1] && board[i][1] === board[i][2]) {
@@ -122,13 +138,14 @@ export default class TicTacToe {
     if (board[0][2] === board[1][1] && board[1][1] === board[2][0]) {
       this._winner = board[0][2];
     }
-    if (this._winner !== Figure.e) {
-      this.endCb(this._winner === Figure.x ? "x" : "o");
-    }
+  }
+
+  private isOver(): boolean {
+    return this.winner !== Figure.e;
   }
 
   private drawX(xStart, yStart, xEnd, yEnd, padding) {
-    this.ctx.strokeStyle = "blue";
+    this.ctx.strokeStyle = TIC_TAC_TOE.X;
     this.ctx.beginPath();
 
     this.ctx.moveTo(xStart + padding, yStart + padding);
@@ -141,7 +158,7 @@ export default class TicTacToe {
   }
 
   private drawO(x, y, radius) {
-    this.ctx.strokeStyle = "red";
+    this.ctx.strokeStyle = TIC_TAC_TOE.O;
     this.ctx.beginPath();
     this.ctx.arc(x, y, radius, 0, 2 * Math.PI);
     this.ctx.stroke();
@@ -152,13 +169,13 @@ export default class TicTacToe {
     const padding = 10;
     const radius = Math.floor(this.cellSize / 2) - padding;
 
-    this.ctx.fillStyle = "white";
+    this.ctx.fillStyle = TIC_TAC_TOE.FILL;
     this.ctx.fillRect(0, 0, this.size, this.size);
     for (let y = 0; y < this._state.length; y += 1) {
       const row = this._state[y];
       for (let x = 0; x < row.length; x += 1) {
         this.ctx.lineWidth = 1;
-        this.ctx.strokeStyle = "black";
+        this.ctx.strokeStyle = TIC_TAC_TOE.STRIPE;
         const xStart = x * this.cellSize;
         const xEnd = (x + 1) * this.cellSize;
         const yStart = y * this.cellSize;
@@ -185,18 +202,43 @@ export default class TicTacToe {
     }
   }
 
+  private displayEndMessage(): void {
+    const s = this.size;
+    this.ctx.clearRect(0, 0, s, s);
+
+    this.ctx.fillStyle = TIC_TAC_TOE.END;
+    this.ctx.fillRect(0, 0, s, s);
+
+    let msg: string = "";
+    if (this.isHost) {
+      msg = this.winner === Figure.x ? "win" : "lost";
+    } else {
+      msg = this.winner === Figure.o ? "win" : "lost";
+    }
+    const text = `You ${msg}`;
+    const textPos = Math.round(s / 2);
+
+    this.ctx.fillStyle = TIC_TAC_TOE.TEXT;
+    this.ctx.fillText(text, textPos, textPos);
+  }
+
   private endTurn(): void {
-    if (!this._winner) {
+    this.checkForWinner();
+    if (!this.isOver()) {
       this._currentFigure = this._currentFigure === Figure.x ? Figure.o : Figure.x;
-      this.checkForWinner();
+      this.redrawCtx();
+    } else {
+      this.displayEndMessage();
+      this.endCb(this.winner === Figure.x ? "x" : "o");
     }
   }
 
-  applyHostReponse(state: TicTacToeState) {
+  applyHostReponse(state: TicTacToeState, winner: Figure) {
     this._state = state;
-    this.endTurn()
-    this.redrawCtx();
-    console.log("getHostReponse:", state)
+    if (winner > Figure.e) {
+      this._winner = winner;
+    }
+    this.endTurn();
   }
 
   makeMove(i: number, j: number): boolean {
@@ -204,16 +246,6 @@ export default class TicTacToe {
     if (stateValue !== Figure.e) return false;
     this._state[i][j] = this._currentFigure;
     this.endTurn();
-    this.redrawCtx();
     return true;
-  }
-
-  flush() {
-    console.log("randomizig...");
-    const rf = () => Math.random() > 0.5 ? Figure.x : Figure.o;
-
-    for (let i = 0; i < this._state.length; i += 1) {
-      this._state[i] = [rf(), rf(), rf()];
-    }
   }
 }

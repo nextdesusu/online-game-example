@@ -20,12 +20,15 @@ interface Paddle {
 interface Ball {
   pos: Point;
   vel: Point;
+  speed: number;
 }
 
 const enum PADDLE_BALL_COLORS {
   BALL = "red",
   PADDLE = "blue",
   FIELD = "gray",
+  END = "orange",
+  TEXT = "black"
 }
 
 const rand = () => Math.random() > .5 ? -1 : 1;
@@ -81,7 +84,7 @@ export default class PaddleBall {
     const paddleMiddle = middle - Math.floor(PADDLE_SIZE.width / 2);
     const bottomY = boardSize - PADDLE_SIZE.height;
 
-    this.ball = { pos: { x: middle, y: middle }, vel: { x: rand(), y: rand() } };
+    this.ball = { pos: { x: middle, y: middle }, vel: { x: rand(), y: rand() }, speed: BALL_SPEED };
     const startP: Point = { x: paddleMiddle, y: 0 };
     const endPos: Point = { x: paddleMiddle, y: bottomY };
     const startS: paddleState = paddleState.stand;
@@ -180,6 +183,10 @@ export default class PaddleBall {
     window.requestAnimationFrame(cb);
   }
 
+  private isOver(): boolean {
+    return this.score.host > 4 || this.score.client > 4;
+  }
+
   private drawBall() {
     const { x, y } = this.ball.pos;
     this.ctx.beginPath();
@@ -240,9 +247,9 @@ export default class PaddleBall {
   }
 
   private moveBall() {
-    const { vel } = this.ball;
-    this.ball.pos.x += BALL_SPEED * vel.x;
-    this.ball.pos.y += BALL_SPEED * vel.y;
+    const { vel, speed } = this.ball;
+    this.ball.pos.x += speed * vel.x;
+    this.ball.pos.y += speed * vel.y;
   }
 
   private handleCollisions(): void {
@@ -255,13 +262,16 @@ export default class PaddleBall {
     if (pos.y + BALL_RADIUS > this.boardSize) {
       vel.y = -1;
       this.score.host += 1;
+      this.resetBall();
     }
     if (pos.y - BALL_RADIUS < 0) {
       vel.y = 1;
       this.score.client += 1;
+      this.resetBall();
     }
     if ((pos.x + BALL_RADIUS) > this.boardSize || (pos.x - BALL_RADIUS) < 0) {
       vel.x *= -1;
+      this.ball.speed += 1;
     }
   }
 
@@ -280,19 +290,53 @@ export default class PaddleBall {
     });
   }
 
+  private resetBall(): void {
+    const center = Math.round(this.boardSize / 2);
+    this.ball.pos.x = center;
+    this.ball.pos.y = center;
+
+    this.ball.vel.x = rand();
+    this.ball.vel.y = rand();
+
+    this.ball.speed = BALL_SPEED;
+  }
+
   private showScore(): void {
+    const { host, client } = this.score;
     const p1 = this.isHost ? "You" : "Oponent";
     const p2 = this.isHost ? "Oponent" : "You";
-    const text = `${p1}: ${this.score.host} ${p2}: ${this.score.client}`;
+    const text = `${p1}: ${host} ${p2}: ${client}`;
     const textPos = Math.round(this.boardSize / 2);
     this.ctx.fillText(text, textPos, textPos);
   }
 
+  private displayEndMessage(): void {
+    const s = this.boardSize;
+    this.ctx.clearRect(0, 0, s, s);
+
+    this.ctx.fillStyle = PADDLE_BALL_COLORS.END;
+    this.ctx.fillRect(0, 0, s, s);
+
+    const { host, client } = this.score;
+    let msg: string = "";
+    if (this.isHost) {
+      msg = host > 4 ? "win" : "lost";
+    } else {
+      msg = client > 4 ? "win" : "lost";
+    }
+    const text = `You ${msg}`;
+    const textPos = Math.round(s / 2);
+
+    this.ctx.fillStyle = PADDLE_BALL_COLORS.TEXT;
+    this.ctx.fillText(text, textPos, textPos);
+  }
+
   private update() {
-    const { client, host } = this.score;
-    if (client > 4 || host > 4) {
-      console.log("end cb called");
+    if (this.isOver()) {
+      this.displayEndMessage();
+      const { client } = this.score;
       this.endCb(client > 4 ? "client" : "host");
+      return;
     }
 
     if (this.isHost) {
@@ -316,6 +360,7 @@ export default class PaddleBall {
     this.ctx.fillStyle = PADDLE_BALL_COLORS.BALL;
     this.drawBall();
 
+    this.ctx.fillStyle = PADDLE_BALL_COLORS.TEXT;
     this.showScore();
   }
 }
